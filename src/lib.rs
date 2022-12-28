@@ -95,8 +95,8 @@ fn find_lowest_package_json_dir<'a, C: Context<'a>>(
 struct Args {
     #[arg(short, long, default_value = ":")]
     delimiter: char,
-    #[arg(long, default_value = "local")]
-    local: String,
+    #[arg(long, default_value = "project")]
+    project: String,
     #[arg(long, default_value = "dependency")]
     dependency: String,
 }
@@ -140,14 +140,14 @@ fn package_manager<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PackageManager>
 
 #[derive(Debug)]
 enum InstallContext {
-    Local,
+    Project,
     Dependency,
 }
 
 impl InstallContext {
     fn from_paths(project: &Path, package: &Path) -> Self {
         if project == package {
-            Self::Local
+            Self::Project
         } else {
             Self::Dependency
         }
@@ -214,7 +214,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let install_context = InstallContext::from_paths(&project_dir, &package_dir);
 
     let name = match install_context {
-        InstallContext::Local => args.local,
+        InstallContext::Project => args.project,
         InstallContext::Dependency => args.dependency,
     };
 
@@ -232,9 +232,9 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     if let false = script_exists {
         match install_context {
-            InstallContext::Local => warn!("Local install script not found"),
+            InstallContext::Project => warn!("{script_name} install script not found"),
             // throw error if this happens
-            InstallContext::Dependency => error!("Dependency install script not found"),
+            InstallContext::Dependency => error!("{script_name} install script not found"),
         };
     }
 

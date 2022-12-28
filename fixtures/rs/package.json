@@ -4,7 +4,7 @@
   "bin": "bin/rs",
   "scripts": {
     "postinstall": "script-context",
-    "postinstall:local": "echo local",
+    "postinstall:project": "echo 'project'",
     "postinstall:dependency": "echo dependeny"
   },
   "devDependencies": {
