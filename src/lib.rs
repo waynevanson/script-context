@@ -199,6 +199,10 @@ fn cli_parameters<'a>(
 }
 
 fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    let package = node_env(&mut cx, "PWD")?;
+    let project = node_env(&mut cx, "INIT_CWD")?;
+
+    trace!("{project}, {package} ");
     let (params, spawn) = cli_parameters(&mut cx)?;
 
     let project_dir = find_lowest_package_json_dir(&mut cx, &params.project_dir)?;
