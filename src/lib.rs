@@ -1,5 +1,7 @@
+#![feature(exit_status_error)]
+
 use clap::Parser;
-use log::{debug, error, trace, warn, Level};
+use log::{error, trace, warn, Level};
 use neon::prelude::*;
 use serde::Deserialize;
 use std::{
@@ -7,31 +9,23 @@ use std::{
     env::args_os,
     fs,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 #[derive(Debug)]
 struct Script {
-    script: String,
+    lifecycle: String,
     delimiter: char,
-    name: String,
+    suffix: String,
 }
 
 impl ToString for Script {
     fn to_string(&self) -> String {
-        self.script.to_string() + &self.delimiter.to_string() + &self.name
+        self.lifecycle.to_string() + &self.delimiter.to_string() + &self.suffix
     }
 }
 
-fn vec_to_array_string<'a, C: Context<'a>>(cx: &mut C, vec: Vec<String>) -> JsResult<'a, JsArray> {
-    let a = JsArray::new(cx, vec.len() as u32);
-    for (i, s) in vec.iter().enumerate() {
-        let v = cx.string(s);
-        a.set(cx, i as u32, v)?;
-    }
-    Ok(a)
-}
-
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct PackageJson {
     scripts: HashMap<String, String>,
 }
@@ -59,6 +53,7 @@ fn node_env<'a, C: Context<'a>>(cx: &mut C, key: &str) -> NeonResult<String> {
     let process = global.get::<JsObject, _, _>(cx, "process")?;
     let version = process.get::<JsObject, _, _>(cx, "env")?;
     let var = version.get::<JsString, _, _>(cx, key)?.value(cx);
+
     Ok(var)
 }
 
@@ -107,10 +102,25 @@ fn args<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Args> {
         .or_else(|message| cx.throw_error(message))
 }
 
+#[derive(Debug)]
 enum PackageManager {
     NPM,
     Yarn,
     PNPM,
+}
+
+impl PackageManager {
+    fn from_path(path: &Path) -> Option<Self> {
+        if path.ends_with("npm") {
+            Some(PackageManager::NPM)
+        } else if path.ends_with("pnpm") {
+            Some(PackageManager::PNPM)
+        } else if path.ends_with("yarn") {
+            Some(PackageManager::Yarn)
+        } else {
+            None
+        }
+    }
 }
 
 impl ToString for PackageManager {
@@ -126,16 +136,15 @@ impl ToString for PackageManager {
 
 fn package_manager<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PackageManager> {
     let package_manager = node_env(cx, "_")?;
+    trace!("_: {:?}", package_manager);
 
-    if package_manager.ends_with("npm") {
-        Ok(PackageManager::NPM)
-    } else if package_manager.ends_with("pnpm") {
-        Ok(PackageManager::PNPM)
-    } else if package_manager.ends_with("yarn") {
-        Ok(PackageManager::Yarn)
-    } else {
-        cx.throw_error("Could not find a package manager")
-    }
+    let package_manager = PackageManager::from_path(&PathBuf::from(&package_manager))
+        .ok_or_else(|| format!("Unable to resolve package manager from path: {package_manager}"))
+        .or_else(|message| cx.throw_error(message))?;
+
+    trace!("package_manager: {:?}", package_manager);
+
+    Ok(package_manager)
 }
 
 #[derive(Debug)]
@@ -145,8 +154,18 @@ enum InstallContext {
 }
 
 impl InstallContext {
-    fn from_paths(project: &Path, package: &Path) -> Self {
-        if project == package {
+    fn suffix(&self, args: &Args) -> String {
+        match self {
+            Self::Project => &args.project,
+            Self::Package => &args.package,
+        }
+        .to_string()
+    }
+}
+
+impl From<&Env> for InstallContext {
+    fn from(env: &Env) -> Self {
+        if env.project_dir == env.package_dir {
             Self::Project
         } else {
             Self::Package
@@ -154,103 +173,101 @@ impl InstallContext {
     }
 }
 
+fn package_dir<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PathBuf> {
+    let package_dir = node_env(cx, "PWD")
+        .map(PathBuf::from)
+        .and_then(|path| find_lowest_package_json_dir(cx, &path))?;
+
+    trace!("package_dir: {:?}", package_dir);
+
+    Ok(package_dir)
+}
+
+fn project_dir<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PathBuf> {
+    let init_cwd = node_env(cx, "INIT_CWD")?;
+    trace!("init_cwd: {:?}", init_cwd);
+
+    let project_dir = find_lowest_package_json_dir(cx, &PathBuf::from(init_cwd))?;
+    trace!("project_dir: {:?}", project_dir);
+
+    Ok(project_dir)
+}
+
+fn lifecycle_event<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<String> {
+    let lifecycle_event = node_env(cx, "npm_lifecycle_event")?;
+
+    trace!("lifecycle_event: {:?}", lifecycle_event);
+
+    Ok(lifecycle_event)
+}
+
 #[derive(Debug)]
-struct CliParameters {
-    pub lifecycle: String,
+struct Env {
     pub project_dir: PathBuf,
     pub package_dir: PathBuf,
+    pub lifecycle_event: String,
+    pub package_manager: PackageManager,
 }
 
-fn do_spawn<'a, C: Context<'a>>(
-    cx: &mut C,
-    f: Handle<'a, JsFunction>,
-    command: String,
-    vec: Vec<String>,
-) -> JsResult<'a, JsValue> {
-    let command = cx.string(command);
-    let args = vec_to_array_string(cx, vec)?;
-    let spawned: Handle<JsValue> = f.call_with(cx).arg(command).arg(args).apply(cx)?;
+fn env<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Env> {
+    let project_dir = project_dir(cx)?;
+    let package_dir = package_dir(cx)?;
+    let lifecycle_event = lifecycle_event(cx)?;
+    let package_manager = package_manager(cx)?;
 
-    Ok(spawned)
-}
-
-fn cli_parameters<'a>(
-    cx: &mut FunctionContext<'a>,
-) -> NeonResult<(CliParameters, Handle<'a, JsFunction>)> {
-    let param = cx.argument::<JsObject>(0)?;
-    let dirs: Handle<JsObject> = param.get(cx, "dir")?;
-
-    let project_dir: PathBuf = dirs.get::<JsString, _, _>(cx, "project")?.value(cx).into();
-    let package_dir: PathBuf = dirs.get::<JsString, _, _>(cx, "package")?.value(cx).into();
-
-    let lifecycle: String = param.get::<JsString, _, _>(cx, "lifecycle")?.value(cx);
-
-    let params = CliParameters {
-        lifecycle,
-        project_dir,
+    let env = Env {
+        lifecycle_event,
         package_dir,
+        project_dir,
+        package_manager,
     };
 
-    trace!("{:?}", params);
+    trace!("env: {:?}", env);
 
-    let spawn: Handle<JsFunction> = param.get(cx, "spawn")?;
-
-    Ok((params, spawn))
+    Ok(env)
 }
 
 fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let package = node_env(&mut cx, "PWD")?;
-    let project = node_env(&mut cx, "INIT_CWD")?;
-
-    trace!("{project}, {package} ");
-    let (params, spawn) = cli_parameters(&mut cx)?;
-
-    let project_dir = find_lowest_package_json_dir(&mut cx, &params.project_dir)?;
-    let package_dir = find_lowest_package_json_dir(&mut cx, &params.package_dir)?;
-    let lifecycle = params.lifecycle;
-
     let args = args(&mut cx)?;
-    let delimiter = args.delimiter;
+    let env = env(&mut cx)?;
 
-    debug!("project_dir: {:?}", project_dir);
-    debug!("package_dir: {:?}", package_dir);
-
-    let install_context = InstallContext::from_paths(&project_dir, &package_dir);
-
-    let name = match install_context {
-        InstallContext::Project => args.project,
-        InstallContext::Package => args.package,
-    };
+    let install_context = InstallContext::from(&env);
 
     let package_json =
-        PackageJson::from_dir(&package_dir).or_else(|message| cx.throw_error(message))?;
+        PackageJson::from_dir(&env.package_dir).or_else(|message| cx.throw_error(message))?;
+
+    trace!("package_json: {:?}", package_json);
 
     let script = Script {
-        script: lifecycle,
-        delimiter,
-        name,
+        lifecycle: env.lifecycle_event,
+        delimiter: args.delimiter,
+        suffix: install_context.suffix(&args).clone(),
     };
+
+    trace!("script: {:?}", script);
 
     let script_name = script.to_string();
     let script_exists = package_json.script_exists(&script);
 
     if let false = script_exists {
+        let message = format!("{script_name} install script not found");
+
         match install_context {
-            InstallContext::Project => warn!("{script_name} install script not found"),
+            InstallContext::Project => warn!("{message}"),
             // throw error if this happens
-            InstallContext::Package => error!("{script_name} install script not found"),
+            InstallContext::Package => error!("{message}"),
         };
     }
 
-    let package_manager = package_manager(&mut cx)?.to_string();
-
     if let true = script_exists {
-        do_spawn(
-            &mut cx,
-            spawn,
-            package_manager,
-            vec!["run".to_string(), script_name],
-        )?;
+        // run script
+        Command::new(env.package_manager.to_string())
+            .arg("run")
+            .arg(script_name)
+            .status()
+            .map_err(|error| error.to_string())
+            .and_then(|status| status.exit_ok().map_err(|error| error.to_string()))
+            .or_else(|message| cx.throw_error(message))?;
     }
 
     Ok(cx.undefined())
