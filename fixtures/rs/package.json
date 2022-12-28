@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "script-context",
     "postinstall:project": "echo 'project'",
-    "postinstall:dependency": "echo dependeny"
+    "postinstall:package": "echo 'package'"
   },
   "devDependencies": {
     "script-context": "file:../../"

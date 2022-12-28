@@ -97,8 +97,8 @@ struct Args {
     delimiter: char,
     #[arg(long, default_value = "project")]
     project: String,
-    #[arg(long, default_value = "dependency")]
-    dependency: String,
+    #[arg(long, default_value = "package")]
+    package: String,
 }
 
 fn args<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Args> {
@@ -141,7 +141,7 @@ fn package_manager<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PackageManager>
 #[derive(Debug)]
 enum InstallContext {
     Project,
-    Dependency,
+    Package,
 }
 
 impl InstallContext {
@@ -149,7 +149,7 @@ impl InstallContext {
         if project == package {
             Self::Project
         } else {
-            Self::Dependency
+            Self::Package
         }
     }
 }
@@ -185,8 +185,6 @@ fn cli_parameters<'a>(
 
     let lifecycle: String = param.get::<JsString, _, _>(cx, "lifecycle")?.value(cx);
 
-    let spawn: Handle<JsFunction> = param.get(cx, "spawn")?;
-
     let params = CliParameters {
         lifecycle,
         project_dir,
@@ -194,6 +192,8 @@ fn cli_parameters<'a>(
     };
 
     trace!("{:?}", params);
+
+    let spawn: Handle<JsFunction> = param.get(cx, "spawn")?;
 
     Ok((params, spawn))
 }
@@ -215,7 +215,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let name = match install_context {
         InstallContext::Project => args.project,
-        InstallContext::Dependency => args.dependency,
+        InstallContext::Package => args.package,
     };
 
     let package_json =
@@ -234,7 +234,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         match install_context {
             InstallContext::Project => warn!("{script_name} install script not found"),
             // throw error if this happens
-            InstallContext::Dependency => error!("{script_name} install script not found"),
+            InstallContext::Package => error!("{script_name} install script not found"),
         };
     }
 
