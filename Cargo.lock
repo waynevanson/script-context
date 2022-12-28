@@ -314,6 +314,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b4b9743ed687d4b4bcedf9ff5eaa7398495ae14e61cba0a295704edbc7decde"
 
 [[package]]
+name = "script-context"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "log",
+ "neon",
+ "serde",
+ "serde_json",
+ "simple_logger",
+]
+
+[[package]]
 name = "semver"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -543,15 +555,3 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
-
-[[package]]
-name = "xpload"
-version = "0.1.0"
-dependencies = [
- "clap",
- "log",
- "neon",
- "serde",
- "serde_json",
- "simple_logger",
-]

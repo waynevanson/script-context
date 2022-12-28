@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "bin": "bin/rs",
   "scripts": {
-    "postinstall": "xpload",
+    "postinstall": "script-context",
     "postinstall:local": "echo local",
-    "postinstall:dependency": "echo dependency"
+    "postinstall:dependency": "echo dependeny"
   },
   "devDependencies": {
-    "xpload": "file:../../"
+    "script-context": "file:../../"
   }
 }

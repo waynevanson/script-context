@@ -1,5 +1,5 @@
 {
-  "name": "xpload",
+  "name": "script-context",
   "version": "0.1.0",
   "description": "postinstall on local or as dependency",
   "main": "./dist/index.js",
