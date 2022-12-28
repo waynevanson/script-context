@@ -1,0 +1,13 @@
+{
+  "name": "rs",
+  "version": "1.0.0",
+  "bin": "bin/rs",
+  "scripts": {
+    "postinstall": "xpload",
+    "postinstall:local": "echo local",
+    "postinstall:dependency": "echo dependency"
+  },
+  "devDependencies": {
+    "xpload": "file:../../"
+  }
+}

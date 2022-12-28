@@ -1,0 +1,6 @@
+{
+  "name": "js",
+  "devDependencies": {
+    "rs": "file:../rs"
+  }
+}
