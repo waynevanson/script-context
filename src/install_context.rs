@@ -16,6 +16,15 @@ impl InstallContext {
     }
 }
 
+impl AsRef<str> for InstallContext {
+    fn as_ref(&self) -> &str {
+        match &self {
+            Self::Project => "project",
+            Self::Package => "package",
+        }
+    }
+}
+
 impl From<&Env> for InstallContext {
     fn from(env: &Env) -> Self {
         if env.project_dir == env.package_dir {
