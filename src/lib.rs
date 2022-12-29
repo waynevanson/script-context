@@ -3,7 +3,7 @@ mod env;
 mod install_context;
 mod package_json;
 mod package_manager;
-use crate::{env::Env, package_json::PackageJson};
+use crate::{env::Env, package_json::PackageJson, package_manager::PackageManager};
 use clap::Parser;
 use log::{error, trace, warn, Level};
 use neon::prelude::*;
@@ -76,13 +76,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     if let true = script_exists {
         // run script, move to package manager
-        Command::new(env.package_manager.to_string())
-            .arg("run")
-            .arg(script_name)
-            .status()
-            .map_err(|error| error.to_string())
-            .and_then(|status| status.exit_ok().map_err(|error| error.to_string()))
-            .or_else(|message| cx.throw_error(message))?;
+        env.package_manager.run_script(&mut cx, script)?;
     }
 
     Ok(cx.undefined())
