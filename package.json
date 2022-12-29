@@ -1,6 +1,6 @@
 {
   "name": "@waynevanson/script-context",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "postinstall on local or as dependency",
   "main": "./dist/index.js",
   "types": "dist/",
