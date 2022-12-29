@@ -1,4 +1,5 @@
 use crate::{env::Env, Args};
+use neon::prelude::*;
 
 #[derive(Debug)]
 pub enum InstallContext {
@@ -13,6 +14,14 @@ impl InstallContext {
             Self::Package => &args.package,
         }
         .to_string()
+    }
+
+    pub fn from_node_env(cx: &mut FunctionContext) -> NeonResult<Self> {
+        let env = Env::from_node_env(cx)?;
+
+        let context = InstallContext::from(&env);
+
+        Ok(context)
     }
 }
 

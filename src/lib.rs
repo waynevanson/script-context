@@ -99,10 +99,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     Ok(())
 }
 
-pub fn context(mut cx: FunctionContext) -> JsResult<JsString> {
-    let env = Env::from_node_env(&mut cx)?;
-
-    let context = InstallContext::from(&env);
+fn context(mut cx: FunctionContext) -> JsResult<JsString> {
+    let context = InstallContext::from_node_env(&mut cx)?;
 
     Ok(cx.string(context))
 }
