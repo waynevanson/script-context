@@ -11,7 +11,7 @@ pub enum PackageManager {
 }
 
 impl PackageManager {
-    pub fn from_path(path: &Path) -> Option<Self> {
+    fn from_path(path: &Path) -> Option<Self> {
         if path.ends_with("npm") {
             Some(PackageManager::NPM)
         } else if path.ends_with("pnpm") {

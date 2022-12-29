@@ -3,14 +3,16 @@ mod env;
 mod install_context;
 mod package_json;
 mod package_manager;
-use crate::{env::Env, install_context::InstallContext, package_json::PackageJson};
+use crate::{env::Env, package_json::PackageJson};
 use clap::Parser;
 use log::{error, trace, warn, Level};
 use neon::prelude::*;
 use std::{env::args_os, process::Command};
 
+pub use crate::install_context::InstallContext;
+
 #[derive(Debug)]
-pub struct Script {
+struct Script {
     lifecycle: String,
     delimiter: char,
     suffix: String,
@@ -23,7 +25,7 @@ impl ToString for Script {
 }
 
 #[derive(Parser, Debug, PartialEq, Eq)]
-pub struct Args {
+struct Args {
     #[arg(short, long, default_value = ":")]
     delimiter: char,
     #[arg(long, default_value = "project")]
@@ -73,7 +75,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     }
 
     if let true = script_exists {
-        // run script
+        // run script, move to package manager
         Command::new(env.package_manager.to_string())
             .arg("run")
             .arg(script_name)
@@ -84,6 +86,12 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     }
 
     Ok(cx.undefined())
+}
+
+fn context(mut cx: FunctionContext) -> JsResult<JsString> {
+    let context = InstallContext::from_node_env(&mut cx)?;
+
+    Ok(cx.string(context))
 }
 
 #[neon::main]
@@ -97,10 +105,4 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("installContext", context)?;
 
     Ok(())
-}
-
-fn context(mut cx: FunctionContext) -> JsResult<JsString> {
-    let context = InstallContext::from_node_env(&mut cx)?;
-
-    Ok(cx.string(context))
 }

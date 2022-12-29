@@ -18,7 +18,7 @@ impl PackageJson {
         Ok(package_json)
     }
 
-    pub fn script_exists(&self, script: &Script) -> bool {
+    pub(crate) fn script_exists(&self, script: &Script) -> bool {
         self.scripts.get(&script.to_string()).is_some()
     }
 }
