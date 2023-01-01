@@ -97,9 +97,7 @@ fn context(mut cx: FunctionContext) -> JsResult<JsString> {
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    simple_logger::init_with_level(Level::Trace)
-        .map_err(|error| error.to_string())
-        .or_else(|message| cx.throw_error(message))?;
+    simple_logger::init_with_level(Level::Trace).or_else(from_error_result(&mut cx))?;
 
     cx.export_function("cli", cli)?;
 
