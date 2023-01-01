@@ -1,4 +1,4 @@
-use crate::{env::node_env, Script};
+use crate::{env::node_env, from_error_result, Script};
 use log::trace;
 use neon::prelude::*;
 use std::{
@@ -34,7 +34,7 @@ impl PackageManager {
             .ok_or_else(|| {
                 format!("Unable to resolve package manager from path: {package_manager}")
             })
-            .or_else(|message| cx.throw_error(message))?;
+            .or_else(from_error_result(cx))?;
 
         trace!("package_manager: {:?}", package_manager);
 
@@ -50,9 +50,8 @@ impl PackageManager {
             .arg("run")
             .arg(script.to_string())
             .status()
-            .map_err(|error| error.to_string())
-            .and_then(|status| status.exit_ok().map_err(|error| error.to_string()))
-            .or_else(|message| cx.throw_error(message))?;
+            .or_else(from_error_result(cx))
+            .and_then(|status| status.exit_ok().or_else(from_error_result(cx)))?;
 
         Ok(())
     }
