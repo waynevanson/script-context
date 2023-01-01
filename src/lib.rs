@@ -1,13 +1,14 @@
 #![feature(exit_status_error)]
+
 mod env;
 mod install_context;
 mod package_json;
 mod package_manager;
-use crate::{env::Env, package_json::PackageJson, package_manager::PackageManager};
+use crate::{env::Env, package_json::PackageJson};
 use clap::Parser;
 use log::{error, trace, warn, Level};
 use neon::prelude::*;
-use std::{env::args_os, process::Command};
+use std::env::args_os;
 
 pub use crate::install_context::InstallContext;
 
@@ -34,11 +35,17 @@ struct Args {
     package: String,
 }
 
+fn from_error_result<'a, C, E, T>(cx: &mut C) -> impl FnOnce(E) -> NeonResult<T> + '_
+where
+    C: Context<'a>,
+    E: ToString,
+{
+    move |error: E| cx.throw_error(error.to_string())
+}
+
 impl Args {
-    fn from_node<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Args> {
-        Args::try_parse_from(args_os().skip(1))
-            .map_err(|error| error.to_string())
-            .or_else(|message| cx.throw_error(message))
+    fn from_node<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Self> {
+        Self::try_parse_from(args_os().skip(1)).or_else(from_error_result(cx))
     }
 }
 
@@ -49,7 +56,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let install_context = InstallContext::from(&env);
 
     let package_json =
-        PackageJson::from_dir(&env.package_dir).or_else(|message| cx.throw_error(message))?;
+        PackageJson::from_dir(&env.package_dir).or_else(from_error_result(&mut cx))?;
 
     trace!("package_json: {:?}", package_json);
 
@@ -64,20 +71,20 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let script_name = script.to_string();
     let script_exists = package_json.script_exists(&script);
 
-    if let false = script_exists {
+    if !script_exists {
         let message = format!("{script_name} install script not found");
 
         match install_context {
-            InstallContext::Project => warn!("{message}"),
-            // throw error if this happens
-            InstallContext::Package => error!("{message}"),
+            InstallContext::Project => warn!("{message}, skipping within the project"),
+            InstallContext::Package => {
+                let message = format!("{message}, required as a package dependency");
+                error!("{message}");
+                cx.throw_error(message)?;
+            }
         };
-    }
-
-    if let true = script_exists {
-        // run script, move to package manager
+    } else {
         env.package_manager.run_script(&mut cx, script)?;
-    }
+    };
 
     Ok(cx.undefined())
 }
