@@ -330,19 +330,15 @@ dependencies = [
  "neon",
  "serde",
  "serde_json",
- "simple_logger",
 ]
 
 [[package]]
 name = "script-context-js"
 version = "0.3.1"
 dependencies = [
- "clap",
  "log",
  "neon",
  "script-context",
- "serde",
- "serde_json",
  "simple_logger",
 ]
 

@@ -17,7 +17,6 @@ clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0"
-simple_logger = "4"
 
 [dependencies.neon]
 version = "0.10"
