@@ -323,7 +323,7 @@ checksum = "7b4b9743ed687d4b4bcedf9ff5eaa7398495ae14e61cba0a295704edbc7decde"
 
 [[package]]
 name = "script-context"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "clap",
  "log",
@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "script-context-js"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "log",
  "neon",
