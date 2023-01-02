@@ -3,10 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use proc_macro::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::spanned::Spanned;
-use syn::{parse_macro_input, Expr, Ident, Token, Type, Visibility};
+use syn::{parse_macro_input, Expr, Token};
 
 // input a map of key value pairs, and return tuples
 // that have nested stuff inside.
@@ -67,8 +66,8 @@ enum Input {
     Pair(Expr, Expr),
 }
 
-impl Parse for Input {
-    fn parse(input: ParseStream) -> Result<Self> {
+impl Input {
+    fn pair(input: ParseStream) -> Result<Input> {
         let first: Expr = input.parse()?;
         input.parse::<Token![,]>()?;
         let second: Expr = input.parse()?;
@@ -77,12 +76,20 @@ impl Parse for Input {
     }
 }
 
+impl Parse for Input {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Self::pair(input)
+    }
+}
+
 #[proc_macro]
 pub fn fixtures(tokens: TokenStream) -> TokenStream {
-    let Input::Pair(first, second) = parse_macro_input!(tokens as Input);
+    let input = parse_macro_input!(tokens as Input);
 
-    let expanded = quote! {
-        vec!((#first,#second))
+    let expanded = match input {
+        Input::Pair(first, second) => quote! {
+            vec![(#first, #second)]
+        },
     };
 
     TokenStream::from(expanded)
