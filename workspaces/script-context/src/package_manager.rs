@@ -2,6 +2,7 @@ use crate::{env::node_env, from_error_result, Script};
 use log::trace;
 use neon::prelude::*;
 use std::{
+    os::unix::process::ExitStatusExt,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -51,7 +52,13 @@ impl PackageManager {
             .arg(script.to_string())
             .status()
             .or_else(from_error_result(cx))
-            .and_then(|status| status.exit_ok().or_else(from_error_result(cx)))?;
+            .and_then(|status| {
+                if status.success() {
+                    Ok(())
+                } else {
+                    from_error_result(cx)(status.to_string())
+                }
+            })?;
 
         Ok(())
     }

@@ -1,5 +1,3 @@
-#![feature(exit_status_error)]
-
 mod env;
 mod install_context;
 mod package_json;

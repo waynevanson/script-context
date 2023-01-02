@@ -1,5 +1,3 @@
-#![feature(proc_macro_diagnostic)]
-
 use std::path::{Path, PathBuf};
 
 use proc_macro::TokenStream;
