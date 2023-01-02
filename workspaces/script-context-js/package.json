@@ -15,7 +15,7 @@
   "scripts": {
     "build": "run-p build.*",
     "build.ts": "tsc",
-    "build.rs": "cargo-cp-artifact -nc dist/rs/index.node -- cargo build --message-format=json-render-diagnostics",
+    "build.rs": "cargo-cp-artifact -ac script-context-js dist/rs/index.node -- cargo build --message-format=json-render-diagnostics",
     "build-release": "yarn build.rs -- --release",
     "install": "yarn build-release",
     "prepublishOnly": "yarn build-release",

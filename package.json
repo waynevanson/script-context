@@ -2,7 +2,7 @@
   "name": "@waynevanson/script-context-monorepo",
   "private": true,
   "workspaces": [
-    "workspaces/script-context"
+    "workspaces/script-context-js"
   ],
   "scripts": {
     "build": "yarn workspaces run build"

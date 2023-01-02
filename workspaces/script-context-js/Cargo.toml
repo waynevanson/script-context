@@ -1,5 +1,5 @@
 [package]
-name = "script-context"
+name = "script-context-js"
 version = "0.3.1"
 description = "postinstall on local or as dependency"
 authors = ["Wayne Van Son"]
@@ -8,8 +8,7 @@ edition = "2018"
 exclude = ["index.node"]
 
 [lib]
-crate-type = ["cdylib", "lib"]
-
+crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

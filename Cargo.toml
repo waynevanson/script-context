@@ -1,4 +1,4 @@
 workspace.members = [
-    "workspaces/script-context",
+    "workspaces/script-context-js",
     "workspaces/proc-macro-fixtures",
 ]
