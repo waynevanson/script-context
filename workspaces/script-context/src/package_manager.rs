@@ -1,8 +1,7 @@
-use crate::{env::node_env, from_error_result, Script};
+use crate::{env::node_env, from_error_result, script::Script};
 use log::trace;
 use neon::prelude::*;
 use std::{
-    os::unix::process::ExitStatusExt,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -42,11 +41,7 @@ impl PackageManager {
         Ok(package_manager)
     }
 
-    pub(crate) fn run_script<'a, C: Context<'a>>(
-        self,
-        cx: &mut C,
-        script: Script,
-    ) -> NeonResult<()> {
+    pub fn run_script<'a, C: Context<'a>>(self, cx: &mut C, script: Script) -> NeonResult<()> {
         Command::new(self.to_string())
             .arg("run")
             .arg(script.to_string())

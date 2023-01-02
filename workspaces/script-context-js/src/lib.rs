@@ -1,37 +1,6 @@
-mod env;
-mod install_context;
-mod package_json;
-mod package_manager;
-use crate::{env::Env, package_json::PackageJson};
-use clap::Parser;
 use log::{error, trace, warn, Level};
 use neon::prelude::*;
-use std::env::args_os;
-
-pub use crate::install_context::InstallContext;
-
-#[derive(Debug)]
-struct Script {
-    lifecycle: String,
-    delimiter: char,
-    suffix: String,
-}
-
-impl ToString for Script {
-    fn to_string(&self) -> String {
-        self.lifecycle.to_string() + &self.delimiter.to_string() + &self.suffix
-    }
-}
-
-#[derive(Parser, Debug, PartialEq, Eq)]
-struct Args {
-    #[arg(short, long, default_value = ":")]
-    delimiter: char,
-    #[arg(long, default_value = "project")]
-    project: String,
-    #[arg(long, default_value = "package")]
-    package: String,
-}
+use script_context::{Args, Env, InstallContext, PackageJson, Script};
 
 fn from_error_result<'a, C, E, T>(cx: &mut C) -> impl FnOnce(E) -> NeonResult<T> + '_
 where
@@ -39,12 +8,6 @@ where
     E: ToString,
 {
     move |error: E| cx.throw_error(error.to_string())
-}
-
-impl Args {
-    fn from_node<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Self> {
-        Self::try_parse_from(args_os().skip(1)).or_else(from_error_result(cx))
-    }
 }
 
 fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -86,7 +49,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-fn context(mut cx: FunctionContext) -> JsResult<JsString> {
+fn install_context(mut cx: FunctionContext) -> JsResult<JsString> {
     let context = InstallContext::from_node_env(&mut cx)?;
 
     Ok(cx.string(context))
@@ -98,7 +61,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
     cx.export_function("cli", cli)?;
 
-    cx.export_function("installContext", context)?;
+    cx.export_function("installContext", install_context)?;
 
     Ok(())
 }

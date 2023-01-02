@@ -85,13 +85,15 @@ fn find_lowest_package_json_dir<'a, C: Context<'a>>(
         parent = directory.parent();
     }
 
-    let message = format!(
-        "Unable to locate `package.json` file within any component of `{:?}`",
-        path
-    );
+    let message = || {
+        format!(
+            "Unable to locate `package.json` file within any component of `{:?}`",
+            path
+        )
+    };
 
     let parent = parent
-        .ok_or(message)
+        .ok_or_else(message)
         .or_else(|message| cx.throw_error(message))?;
 
     Ok(parent.to_owned())

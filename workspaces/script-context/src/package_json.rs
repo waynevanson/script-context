@@ -1,4 +1,4 @@
-use crate::Script;
+use crate::script::Script;
 use serde::Deserialize;
 use std::{collections::HashMap, fs, path::Path};
 
@@ -18,7 +18,7 @@ impl PackageJson {
         Ok(package_json)
     }
 
-    pub(crate) fn script_exists(&self, script: &Script) -> bool {
+    pub fn script_exists(&self, script: &Script) -> bool {
         self.scripts.get(&script.to_string()).is_some()
     }
 }

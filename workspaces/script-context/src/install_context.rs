@@ -8,7 +8,7 @@ pub enum InstallContext {
 }
 
 impl InstallContext {
-    pub(crate) fn suffix(&self, args: &Args) -> String {
+    pub fn suffix(&self, args: &Args) -> String {
         match self {
             Self::Project => &args.project,
             Self::Package => &args.package,
