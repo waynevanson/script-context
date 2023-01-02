@@ -1,0 +1,32 @@
+{
+  "name": "@waynevanson/script-context",
+  "version": "0.2.0",
+  "description": "postinstall on local or as dependency",
+  "main": "./dist/index.js",
+  "types": "dist/",
+  "type": "commonjs",
+  "bin": {
+    "script-context": "./bin"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "run-p build.*",
+    "build.ts": "tsc",
+    "build.rs": "cargo-cp-artifact -nc dist/rs/index.node -- cargo build --message-format=json-render-diagnostics",
+    "build-release": "yarn build.rs -- --release",
+    "install": "yarn build-release",
+    "prepublishOnly": "yarn build-release",
+    "test": "cargo test"
+  },
+  "author": "Wayne Van Son",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "cargo-cp-artifact": "^0.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^4.9.4"
+  }
+}
