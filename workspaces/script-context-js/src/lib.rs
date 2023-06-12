@@ -1,6 +1,6 @@
-use log::{error, trace, warn, Level};
+use log::{error, info, trace, Level};
 use neon::prelude::*;
-use script_context::{Args, Env, InstallContext, PackageJson, Script};
+use script_context::{Env, InstallContext, PackageJson, Script, TryIntoArgs};
 
 fn from_error_result<'a, C, E, T>(cx: &mut C) -> impl FnOnce(E) -> NeonResult<T> + '_
 where
@@ -11,7 +11,7 @@ where
 }
 
 fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let args = Args::from_node(&mut cx)?;
+    let args = cx.try_into_args()?;
     let env = Env::from_node_env(&mut cx)?;
 
     let install_context = InstallContext::from(&env);
@@ -35,7 +35,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         let message = format!("{} install script not found", script.to_string());
 
         match install_context {
-            InstallContext::Project => warn!("{message}, skipping within the project"),
+            InstallContext::Project => info!("{message}, skipping within the project"),
             InstallContext::Package => {
                 let message = format!("{message}, required as a package dependency");
                 error!("{message}");
@@ -50,7 +50,7 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 
 fn install_context(mut cx: FunctionContext) -> JsResult<JsString> {
-    let context = InstallContext::from_node_env(&mut cx)?;
+    let context = InstallContext::try_from_node_env(&mut cx)?;
 
     Ok(cx.string(context))
 }

@@ -4,10 +4,9 @@ mod package_json;
 mod package_manager;
 mod script;
 
-use std::env::args_os;
-
 use clap::Parser;
 use neon::prelude::*;
+use std::env::args_os;
 
 pub use crate::{
     env::Env, install_context::InstallContext, package_json::PackageJson,
@@ -24,9 +23,16 @@ pub struct Args {
     pub package: String,
 }
 
-impl Args {
-    pub fn from_node<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Self> {
-        Self::try_parse_from(args_os().skip(1)).or_else(from_error_result(cx))
+pub trait TryIntoArgs {
+    fn try_into_args(&mut self) -> NeonResult<Args>;
+}
+
+impl<'a, C> TryIntoArgs for C
+where
+    C: Context<'a>,
+{
+    fn try_into_args(&mut self) -> NeonResult<Args> {
+        Args::try_parse_from(args_os().skip(1)).or_else(from_error_result(self))
     }
 }
 

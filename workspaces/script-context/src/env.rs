@@ -1,6 +1,6 @@
-use crate::package_manager::PackageManager;
+use crate::{from_error_result, package_manager::PackageManager};
 use log::trace;
-use neon::prelude::*;
+use neon::{object::PropertyKey, prelude::*};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -13,10 +13,23 @@ pub struct Env {
 
 impl Env {
     pub fn from_node_env<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<Self> {
-        let project_dir = project_dir(cx)?;
-        let package_dir = package_dir(cx)?;
-        let lifecycle_event = lifecycle_event(cx)?;
-        let package_manager = PackageManager::from_node_env(cx)?;
+        let project_dir = cx
+            .into_env("INIT_CWD")
+            .map(PathBuf::from)
+            .and_then(|pathbuf| {
+                pathbuf
+                    .find_lowest_file("package.json")
+                    .or_else(from_error_result(cx))
+            })?;
+
+        let package_dir = cx.into_env("PWD").map(PathBuf::from).and_then(|pathbuf| {
+            pathbuf
+                .find_lowest_file("package.json")
+                .or_else(from_error_result(cx))
+        })?;
+
+        let lifecycle_event = cx.into_env("npm_lifecycle_event")?;
+        let package_manager = PackageManager::try_from_node_env(cx)?;
 
         let env = Self {
             lifecycle_event,
@@ -31,70 +44,54 @@ impl Env {
     }
 }
 
-fn package_dir<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PathBuf> {
-    let package_dir = node_env(cx, "PWD")
-        .map(PathBuf::from)
-        .and_then(|path| find_lowest_package_json_dir(cx, &path))?;
-
-    trace!("package_dir: {:?}", package_dir);
-
-    Ok(package_dir)
+pub trait IntoEnvFromNode {
+    fn into_env(&mut self, key: impl PropertyKey + Copy + ToString) -> NeonResult<String>;
 }
 
-fn project_dir<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<PathBuf> {
-    let init_cwd = node_env(cx, "INIT_CWD")?;
-    trace!("init_cwd: {:?}", init_cwd);
+impl<'a, C> IntoEnvFromNode for C
+where
+    C: Context<'a>,
+{
+    fn into_env(&mut self, key: impl PropertyKey + Copy + ToString) -> NeonResult<String> {
+        let var = self
+            .global()
+            .get::<JsObject, _, _>(self, "process")?
+            .get::<JsObject, _, _>(self, "env")?
+            .get::<JsString, _, _>(self, key)?
+            .value(self);
 
-    let project_dir = find_lowest_package_json_dir(cx, &PathBuf::from(init_cwd))?;
-    trace!("project_dir: {:?}", project_dir);
-
-    Ok(project_dir)
+        trace!("{}: {:?}", key.to_string(), var);
+        Ok(var)
+    }
 }
 
-fn lifecycle_event<'a, C: Context<'a>>(cx: &mut C) -> NeonResult<String> {
-    let lifecycle_event = node_env(cx, "npm_lifecycle_event")?;
-
-    trace!("lifecycle_event: {:?}", lifecycle_event);
-
-    Ok(lifecycle_event)
+trait FindLowestFile {
+    fn find_lowest_file(&self, file_name: impl AsRef<str>) -> Result<PathBuf, String>;
 }
 
-pub fn node_env<'a, C: Context<'a>>(cx: &mut C, key: &str) -> NeonResult<String> {
-    let global = cx.global();
-    let process = global.get::<JsObject, _, _>(cx, "process")?;
-    let version = process.get::<JsObject, _, _>(cx, "env")?;
-    let var = version.get::<JsString, _, _>(cx, key)?.value(cx);
+impl FindLowestFile for Path {
+    fn find_lowest_file(&self, file_name: impl AsRef<str>) -> Result<PathBuf, String> {
+        let mut parent = Some(self);
 
-    Ok(var)
-}
+        while let Some(directory) = parent {
+            let package_json = directory.join(file_name.as_ref());
 
-// find package json in string component
-fn find_lowest_package_json_dir<'a, C: Context<'a>>(
-    cx: &mut C,
-    path: &Path,
-) -> NeonResult<PathBuf> {
-    let mut parent = Some(path);
+            // try_exists?
+            if let true = package_json.exists() {
+                break;
+            }
 
-    while let Some(directory) = parent {
-        let package_json = directory.join("package.json");
-        // try_exists?
-        if let true = package_json.exists() {
-            break;
+            parent = directory.parent();
         }
 
-        parent = directory.parent();
+        parent
+            .ok_or_else(|| {
+                format!(
+                    "Unable to locate `{}` file within any component of `{:?}`",
+                    file_name.as_ref(),
+                    self
+                )
+            })
+            .map(|path| path.to_owned())
     }
-
-    let message = || {
-        format!(
-            "Unable to locate `package.json` file within any component of `{:?}`",
-            path
-        )
-    };
-
-    let parent = parent
-        .ok_or_else(message)
-        .or_else(|message| cx.throw_error(message))?;
-
-    Ok(parent.to_owned())
 }
