@@ -1,6 +1,7 @@
 /// Name of a script broken down into its components.
 ///
-/// example:
+/// ## Example
+/// ```
 /// let script = Script {
 ///     lifecycle: "postinstall".to_string(),
 ///     delimiter: ":".to_string(),
@@ -8,6 +9,7 @@
 /// }
 ///
 /// assert_eq!(script.to_string(), "postinstall:project".to_string())
+/// ```
 #[derive(Debug, PartialEq)]
 pub struct Script {
     pub lifecycle: String,

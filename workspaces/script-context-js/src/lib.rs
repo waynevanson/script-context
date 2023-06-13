@@ -19,20 +19,18 @@ fn cli(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let package_json =
         PackageJson::from_dir(&env.package_dir).or_else(from_error_result(&mut cx))?;
 
-    trace!("package_json: {:?}", package_json);
-
     let script = Script {
         lifecycle: env.lifecycle_event,
         delimiter: args.delimiter,
         suffix: install_context.suffix(&args).clone(),
     };
 
-    trace!("script: {:?}", script);
+    trace!("{:?}", script);
 
     let script_exists = package_json.script_exists(&script);
 
     if !script_exists {
-        let message = format!("{} install script not found", script.to_string());
+        let message = format!("{} script not found", script.to_string());
 
         match install_context {
             InstallContext::Project => info!("{message}, skipping within the project"),

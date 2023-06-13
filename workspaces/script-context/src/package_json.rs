@@ -1,4 +1,5 @@
 use crate::script::Script;
+use log::trace;
 use serde::Deserialize;
 use std::{collections::HashMap, fs, path::Path};
 
@@ -14,6 +15,8 @@ impl PackageJson {
 
         let package_json =
             serde_json::from_slice::<PackageJson>(&contents).map_err(|error| error.to_string())?;
+
+        trace!("{:?}", package_json);
 
         Ok(package_json)
     }
